@@ -1,11 +1,5 @@
 import numpy as np
 
-# This is a simple implementation of a neural network
-# The neural network is a feedforward network with a single output neuron
-# The network has a variable number of hidden layers and neurons
-# The network uses the sigmoid activation function for the hidden layers
-# The network uses the step function for the output layer
-
 class NeuralNetwork:
 
     def __init__(self, input_size, hidden_architecture, hidden_activation, output_activation):
