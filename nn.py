@@ -1,89 +1,112 @@
 import numpy as np
 
 class NeuralNetwork:
+    """
+    Flexible feedforward neural network (including perceptron) for the Fruit Catcher AI.
+
+    Attributes:
+    - input_size: dimensionality of the state vector (should be 10)
+    - hidden_architecture: tuple of ints, each the number of neurons in a hidden layer
+    - hidden_activation: activation function for hidden layers (vectorized)
+    - output_activation: activation function for output layer (scalar)
+
+    Weights are stored flat and can be loaded via `load_weights`. Predictions use `forward`.
+    """
     def __init__(self, input_size, hidden_architecture, hidden_activation, output_activation):
         self.input_size = input_size
-        # hidden_architecture is a tuple, e.g. (5, 2) for two hidden layers
         self.hidden_architecture = hidden_architecture
         self.hidden_activation = hidden_activation
         self.output_activation = output_activation
 
+        # Placeholders for weights/biases; to be set via load_weights()
+        self.hidden_weights = []
+        self.hidden_biases = []
+        self.output_weights = None
+        self.output_bias = None
+
     def compute_num_weights(self):
         """
-        Compute total number of weights (including biases) for this network.
+        Compute the total number of parameters (weights + biases) in the network.
         """
         total = 0
         prev_size = self.input_size
-        # Hidden layers
+        # Hidden layers: each layer has prev_size * layer_size weights + layer_size biases
         for layer_size in self.hidden_architecture:
-            # weights: prev_size x layer_size, biases: layer_size
             total += prev_size * layer_size + layer_size
             prev_size = layer_size
-        # Output layer (single neuron)
-        # weights: prev_size x 1, bias: 1
+        # Output layer (one neuron): prev_size weights + 1 bias
         total += prev_size * 1 + 1
         return total
 
-    def load_weights(self, weights):
+    def load_weights(self, flat_weights):
         """
-        Load a flat list of weights (and biases) into the network.
+        Unpack a flat list or array of weights into layer-wise matrices and bias vectors.
         """
-        w = np.array(weights)
-        self.hidden_weights = []
-        self.hidden_biases = []
+        w = np.array(flat_weights, dtype=float)
+        expected = self.compute_num_weights()
+        if w.size != expected:
+            raise ValueError(f"Expected {expected} weights, got {w.size}")
 
         idx = 0
         prev_size = self.input_size
-        # Load hidden layers
+        self.hidden_weights = []
+        self.hidden_biases = []
+
+        # Hidden layers
         for layer_size in self.hidden_architecture:
-            # biases
-            b = w[idx: idx + layer_size]
+            # biases for this layer
+            b = w[idx : idx + layer_size]
             idx += layer_size
-            # weights
+            # weights for this layer
             size_w = prev_size * layer_size
-            W = w[idx: idx + size_w].reshape(prev_size, layer_size)
+            W = w[idx : idx + size_w].reshape(prev_size, layer_size)
             idx += size_w
 
             self.hidden_biases.append(b)
             self.hidden_weights.append(W)
             prev_size = layer_size
 
-        # Load output layer
-        # bias
-        self.output_bias = w[idx]
+        # Output layer
+        # bias (scalar)
+        self.output_bias = float(w[idx])
         idx += 1
-        # weights
-        self.output_weights = w[idx: idx + prev_size]
+        # weights from last hidden (or input) to output
+        self.output_weights = w[idx : idx + prev_size]
 
     def forward(self, x):
         """
-        Forward pass: compute network output for input x.
+        Perform a forward pass and return the network's scalar output (action).
+
+        x: array-like of length input_size
+        returns: output_activation applied to the final linear combination
         """
-        a = np.array(x)
-        # Hidden layers
+        a = np.array(x, dtype=float)
+        # Propagate through hidden layers
         for W, b in zip(self.hidden_weights, self.hidden_biases):
             z = np.dot(a, W) + b
             a = self.hidden_activation(z)
-        # Output layer
+        # Final output neuron
         z_out = np.dot(a, self.output_weights) + self.output_bias
         return self.output_activation(z_out)
 
 
 def create_network_architecture(input_size):
     """
-    Define and return a neural network architecture.
+    Define the neural network architecture for evolution.
 
-    1) Simple perceptron (single neuron, no hidden layers)
-    2) Feedforward network with one hidden layer of 5 neurons
+    Returns a NeuralNetwork instance. Two configurations are provided:
+      1) Single perceptron (no hidden layers).
+      2) One hidden layer of 5 neurons.
+
+    Activate the desired one by uncommenting its `return` line.
     """
     # Activation functions
-    hidden_fn = lambda x: 1 / (1 + np.exp(-x))  # sigmoid
-    output_fn = lambda x: 1 if x > 0 else -1    # sign
+    hidden_fn = lambda x: 1 / (1 + np.exp(-x))  # sigmoid for hidden layers
+    output_fn = lambda x: 1 if x > 0 else -1    # signum for action decision
 
     # --- Configuration options ---
-    # 1) Simple perceptron:
-    # Uncomment the next line for a perceptron
+    # 1) Simple perceptron (no hidden layer)
     # return NeuralNetwork(input_size, (), hidden_fn, output_fn)
 
-    # 2) Feedforward network with one hidden layer:
+    # 2) Feedforward network with one hidden layer of 5 neurons
     return NeuralNetwork(input_size, (5,), hidden_fn, output_fn)
