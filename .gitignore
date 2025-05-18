@@ -1,0 +1,9 @@
+items.csv
+test.csv
+train.csv
+
+images/
+
+__*
+
+venv/
